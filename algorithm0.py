@@ -1,20 +1,18 @@
 from common import *
 from utils import *
 from copy import deepcopy
-from random import shuffle
+from random import shuffle, randint
 
 
 def active(handcards: list, record) -> list:
-    # TODO
-    history, tribute, anti = record
+    all_combi = __get_all_combi_1(handcards)
 
-    all_combi = __combine_phase_1(handcards)
-    candidates = []
+    rated = []
     for combi in all_combi:
-        optimal_action, rate = __rate_combi(combi, record)
-        candidates.append([optimal_action, rate])
-    candidates.sort(key=lambda i: i[1])
-    action = candidates[-1][0]
+        action, rate = __get_optimal_action_1(combi, record)
+        rated.append([action, rate])
+    rated.sort(key=lambda i: i[1])
+    action = rated[-1][0]
     # update handcards:
     for card in action[2]:
         handcards.remove(card)
@@ -22,30 +20,97 @@ def active(handcards: list, record) -> list:
 
 
 def passive(handcards, record) -> list:
-    # TODO
     history, tribute, anti = record
+    greater_action = None
+    for pos, action in history:
+        if action != pass_action:
+            greater_action = action
+            break
+    action_type = greater_action[0]
+    action_symbol = greater_action[1]
+
+    ret_action = None
+
+    if action_type == "Single":
+        ret_action = __passive_single(action_symbol, handcards, record)
+    elif action_type == "Pair":
+        ret_action = __passive_pair(action_symbol, handcards, record)
+    elif action_type == "Trips":
+        ret_action = __passive_trips(action_symbol, handcards, record)
+    elif action_type == "ThreePair":
+        ret_action = __passive_three_pair(action_symbol, handcards, record)
+    elif action_type == "ThreeWithTwo":
+        ret_action = __passive_three_with_two(action_symbol, handcards, record)
+    elif action_type == "TwoTrips":
+        ret_action = __passive_two_trips(action_symbol, handcards, record)
+    elif action_type == "Straight":
+        ret_action = __passive_straight(action_symbol, handcards, record)
+    elif action_type == "StraightFlush" or action_type == "Bomb":
+        bomb_value = calc_bomb_value(greater_action)
+        ret_action = __passive_bomb(bomb_value, handcards, record)
+
+    if ret_action is None:
+        exit(-3)
+    else:
+        return ret_action
+
+
+def __passive_single(symbol: str, handcards: list, record: list) -> list:
+    # TODO
     return pass_action
 
 
-def __rate_combi(combi, record):
-    history, tribute, anti = record
-    candidates = []
+def __passive_pair(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
 
+
+def __passive_trips(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __passive_three_pair(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __passive_three_with_two(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __passive_two_trips(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __passive_straight(symbol: str, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __passive_bomb(bomb_value: int, handcards: list, record: list) -> list:
+    # TODO
+    return pass_action
+
+
+def __get_optimal_action_1(combi, record) -> list:
     all_actions = __get_all_actions(combi)
-    if len(all_actions) == 1:
-        action = all_actions[0]
-        return [action, __rate_active_action(action)]
 
+    rated = []
     for action in all_actions:
-        rest_combi = exclude(combi, action[2])
-        action_rate = __rate_active_action(action, record)
-        combi_rate = __rate_combi(rest_combi, record)[1]
-        rate = action_rate + combi_rate
-        candidates.append([action, rate])
-    candidates.sort(key=lambda i: i[1])
-    action = candidates[-1][0]
-    rate = candidates[-1][1]
-    return [action, rate]
+        rest_combi = exclude(combi, action)
+        rate = __do_rate(action, rest_combi, record)
+        rated.append([action, rate])
+    rated.sort(key=lambda t: t[1])
+    return rated[-1]
+
+
+def __do_rate(action: list, rest_combi: list, record: list) -> int:
+    straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = rest_combi
+    history, tribute, anti = record
+    return randint(0, 9999)
 
 
 def __get_all_actions_w0(combi: list) -> list:
@@ -55,12 +120,15 @@ def __get_all_actions_w0(combi: list) -> list:
         all_actions.append(["Bomb", bomb[0][1], bomb])
         if bomb != joker_bomb:
             trips.append([bomb[0], bomb[1], bomb[2]])
+    trips.sort(key=lambda t: symbol2index[t[0][1]])
     for triple in trips:
         all_actions.append(["Trips", triple[0][1], triple])
         pairs.append([triple[0], triple[1]])
+    pairs.sort(key=lambda t: symbol2index[t[0][1]])
     for pair in pairs:
         all_actions.append(["Pair", pair[0][1], pair])
         singles.append([pair[0]])
+    singles.sort(key=lambda t: symbol2index[t[0][1]])
     for single in singles:
         all_actions.append(["Single", single[0][1], single])
     # 3+2：
@@ -70,17 +138,20 @@ def __get_all_actions_w0(combi: list) -> list:
                 all_actions.append(["ThreeWithTwo", triple[0][1], triple + pair])
     # 3x2:
     for i in range(len(pairs) - 2):
-        start_symbol = pairs[i][0][1]
-        end_symbol = pairs[i + 2][0][1]
-        if symbol2index[start_symbol] % 13 == (symbol2index[end_symbol] - 2) % 13 and symbol2index[start_symbol] <= 11:
-            all_actions.append(["ThreePair", start_symbol, pairs[i] + pairs[i + 1] + pairs[i + 2]])
+        symbol_start = pairs[i][0][1]
+        symbol_end = pairs[i + 2][0][1]
+        if symbol2index[symbol_start] == symbol2index[symbol_end] - 2 and symbol2index[symbol_end] <= 12:
+            all_actions.append(["ThreePair", symbol_start, pairs[i] + pairs[i + 1] + pairs[i + 2]])
+    if len(pairs) >= 3 and pairs[0][0][1] == 'A' and pairs[-2][0][1] == 'Q' and pairs[-1][0][1] == 'K':
+        all_actions.append(["ThreePair", 'Q', pairs[-2] + pairs[-1] + pairs[0]])
     # 2x3:
     for i in range(len(trips) - 1):
-        start_symbol = trips[i][0][1]
-        end_symbol = trips[i + 1][0][1]
-        if symbol2index[start_symbol] % 13 == (symbol2index[end_symbol] - 1) % 13 and symbol2index[start_symbol] <= 11:
-            all_actions.append(["TwoTrips", start_symbol, trips[i] + trips[i + 1]])
-
+        symbol_start = trips[i][0][1]
+        symbol_end = trips[i + 1][0][1]
+        if symbol2index[symbol_start] == symbol2index[symbol_end] - 1 and symbol2index[symbol_end] <= 12:
+            all_actions.append(["TwoTrips", symbol_start, trips[i] + trips[i + 1]])
+    if len(trips) >= 2 and trips[0][0][1] == 'A' and trips[-1][0][1] == 'K':
+        all_actions.append(["TwoTrips", 'K', pairs[-1] + pairs[0]])
     return all_actions
 
 
@@ -88,16 +159,16 @@ def __get_all_actions_w1(combi: list) -> list:
     wildcard = get_wildcard()
     all_actions = []
     straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = deepcopy(combi)
-    extented_trips = []
-    extented_pairs = []
-    extented_singles = []
+    ex_trips = []
+    ex_pairs = []
+    ex_singles = []
     for bomb in bombs:
         if bomb != joker_bomb:
-            extented_trips.append([bomb[0], bomb[1], bomb[2]])
+            ex_trips.append([bomb[0], bomb[1], bomb[2]])
     for triple in trips:
-        extented_pairs.append([triple[0], triple[1]])
+        ex_pairs.append([triple[0], triple[1]])
     for pair in pairs:
-        extented_singles.append([pair[0]])
+        ex_singles.append([pair[0]])
 
     all_actions.append(["Single", wildcard[1], [wildcard]])
     for single in singles:
@@ -112,13 +183,82 @@ def __get_all_actions_w1(combi: list) -> list:
         if bomb != joker_bomb:
             all_actions.append(["Bomb", bomb[0][1], bomb + [wildcard]])
     for pair1 in pairs:
-        for pair2 in pairs + extented_pairs:
+        for pair2 in pairs + ex_pairs:
             if pair1 != pair2 and pair1[0] not in AllJokers and pair2[0] not in AllJokers:
-                all_actions.append(["ThreeWIthPair", pair1[0][1], pair1 + [wildcard] + pair2])
-    for triple in trips + extented_trips:
+                all_actions.append(["ThreeWithTwo", pair1[0][1], pair1 + [wildcard] + pair2])
+    for triple in trips + ex_trips:
         for single in singles:
             if single[0][1] != triple[0][1] and single[0] not in AllJokers:
                 all_actions.append(["ThreeWithTwo", triple[0][1], triple + single + [wildcard]])
+
+    all_pairs = sorted(pairs + ex_pairs, key=lambda p: symbol2index[p[0][1]])
+    # to find 3x2 (ThreePairs) with one wildcard:
+    for single in singles:
+        symbol = single[0][1]
+        # axbbcc
+        # aabxcc
+        # aabbcx
+        index1 = symbol2index[symbol]
+        if 0 <= index1 <= 11: # A-Q, for x + 1 + 2 + 2
+            if index1 == 11: # if QX, try to find KKAA
+                if len(all_pairs) > 0 and all_pairs[0][0][1] == 'A': # if found AA
+                    for i in range(-1, -len(all_pairs), -1): # try to find KK
+                        if all_pairs[i][0][1] == 'K': # if find KK, add QXKKAA
+                            all_actions.append(["ThreePair", 'Q', single + [wildcard] + all_pairs[i] + all_pairs[0]])
+                            break
+            else: # if A-J
+                min_symbol = symbol
+                for i in range(len(all_pairs) - 1):
+                    symbol_index_mid = symbol2index[all_pairs[i][0][1]]
+                    symbol_index_max = symbol2index[all_pairs[i + 1][0][1]]
+                    if index1 == symbol_index_mid - 1 and index1 == symbol_index_max - 2:
+                        all_actions.append(["ThreePair", min_symbol, single + [wildcard] + all_pairs[i] + all_pairs[i + 1]])
+        if 1 <= index1 <= 12: # 2-K, for 2 + x + 1 + 2
+            if index1 == 12: # if KX, try to find QQ AA
+                if len(all_pairs) > 0 and all_pairs[0][0][1] == 'A': # if found AA
+                    for i in range(-1, -len(all_pairs), -1): # try to find QQ
+                        if all_pairs[i][0][1] == 'Q': # if find KK, add QQKXAA
+                            all_actions.append(["ThreePair", 'Q', all_pairs[i] + single + [wildcard] + all_pairs[0]])
+                            break
+            else: # if 2-Q
+                mid_symbol = symbol
+                min_symbol_pos = 0
+                max_symbol_pos = len(all_pairs) - 1
+                while min_symbol_pos < len(all_pairs) and symbol2index[all_pairs[min_symbol_pos][0][1]] != symbol2index[mid_symbol] - 1:
+                    min_symbol_pos += 1
+                if min_symbol_pos < len(all_pairs):
+                    while max_symbol_pos > min_symbol_pos and symbol2index[all_pairs[max_symbol_pos][0][1]] != symbol2index[mid_symbol] + 1:
+                        max_symbol_pos -= 1
+                    if max_symbol_pos > min_symbol_pos:
+                        action_cards = all_pairs[min_symbol_pos] + single + [wildcard] + all_pairs[max_symbol_pos]
+                        all_actions.append(["ThreePair", all_pairs[min_symbol_pos][0][1], action_cards])
+        if 2 <= index1 <= 12 or index1 == 0: # A & 3-K, for 2 + 2 + x + 1
+            if index1 == 0: # if AX, try to find QQKK
+                for i in range(-1, -len(all_pairs), -1): # try to find KK
+                    if all_pairs[i][0][1] == 'K' and all_pairs[i - 1][0][1] == 'Q': # if find QQKK, add QQKKAX
+                        all_actions.append(["ThreePair", 'Q', all_pairs[i - 1] + all_pairs[i] + single + [wildcard]])
+                        break
+            else: # if 3-K
+                min_symbol = symbol
+                for i in range(-1, -len(all_pairs), -1):
+                    symbol_index_min = symbol2index[all_pairs[i - 1][0][1]]
+                    symbol_index_mid = symbol2index[all_pairs[i][0][1]]
+                    if index1 == symbol_index_min + 2 and index1 == symbol_index_mid + 1:
+                        all_actions.append(["ThreePair", all_pairs[i - 1][0][1], all_pairs[i - 1] + all_pairs[i] + single + [wildcard]])
+    all_trips = sorted(trips + ex_trips, key=lambda p: symbol2index[p[0][1]])
+    for pair in pairs:
+        symbol_p = pair[0][1]
+        # AAXBBB
+        # AAABBX
+        index1 = symbol2index[symbol_p]
+        if 0 <= index1 <= 12:
+            for triple in all_trips:
+                symbol_t = triple[0][1]
+                if symbol2index[symbol_t] == (index1 + 1) % 13:
+                    all_actions.append(["TwoTrips", symbol_p, pair + [wildcard] + triple])
+                elif symbol2index[symbol_t] == index1 - 1:
+                    all_actions.append(["TwoTrips", symbol_t, triple + pair + [wildcard]])
+
     # MUST use one wildcard
     #
     # single -> x
@@ -128,7 +268,6 @@ def __get_all_actions_w1(combi: list) -> list:
     #   -> x + 4+
     # ThreeWithTwo -> x + 2 + 2
     #   -> 3 + x + 1
-    # TODO:
     # ThreePairs -> x + 1 + 2 + 2
     #   -> 2 + x + 1 + 2
     #   -> 2 + 2 + x + 1
@@ -139,29 +278,41 @@ def __get_all_actions_w1(combi: list) -> list:
 
 def __get_all_actions_w2(combi: list) -> list:
     wildcard = get_wildcard()
+    rank_symbol = get_rank_symbol()
     all_actions = []
     straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = deepcopy(combi)
-    extented_trips = []
-    extented_pairs = []
-    extented_singles = []
+    ex_trips = []
+    ex_pairs = []
+    ex_singles = []
     for bomb in bombs:
         if bomb != joker_bomb:
-            extented_trips.append([bomb[0], bomb[1], bomb[2]])
+            ex_trips.append([bomb[0], bomb[1], bomb[2]])
     for triple in trips:
-        extented_pairs.append([triple[0], triple[1]])
+        ex_pairs.append([triple[0], triple[1]])
     for pair in pairs:
-        extented_singles.append([pair[0]])
+        ex_singles.append([pair[0]])
+
+    all_actions.append(["Pair", rank_symbol, [wildcard, wildcard]])
+    for single in singles:
+        all_actions.append(["Trips", single[0][1], single + [wildcard, wildcard]])
+    for pair in pairs:
+        all_actions.append(["Bomb", pair[0][1], pair + [wildcard, wildcard]])
+    for triple in trips:
+        all_actions.append(["Bomb", triple[0][1], triple + [wildcard, wildcard]])
+    for bomb in bombs:
+        if bomb != joker_bomb:
+            all_actions.append(["Bomb", bomb[0][1], bomb + [wildcard, wildcard]])
     # MUST use 2 wildcards
-    # TODO
     # pair -> 2x
     # triples -> 2x + 1
     # bomb -> 2x + 2
     #   -> 2x + 3
     #   -> 2x + 4+
-    # ThreeWithTwo -> 2x + 3
+    # TODO -
+    # X ThreeWithTwo -> 2x + 3
     #   -> 2x + 1 + 2
     #   -> x + 2 + x + 1
-    # ThreePairs -> 2x + 2 + 2
+    # X ThreePairs -> 2x + 2 + 2
     #   -> 2 + 2x + 2
     #   -> 2 + 2 + 2x
     #   -> x + 1 + x + 1 + 2
@@ -170,7 +321,7 @@ def __get_all_actions_w2(combi: list) -> list:
     # TwoTrips -> 2x + 1 + 3
     #   -> x + 2 + x + 2
     #   -> 3 + 2x + 1
-    return []
+    return all_actions
 
 
 def __get_all_actions(combi: list) -> list:
@@ -190,17 +341,10 @@ def __get_all_actions(combi: list) -> list:
         all_actions += __get_all_actions_w1(combi)
         if wc_cnt == 2:
             all_actions += __get_all_actions_w2(combi)
-    wildcard = get_wildcard()
     return all_actions
 
 
-def __rate_active_action(action, record) -> int:
-    # TODO
-    history, tribute, anti = record
-    return 0
-
-
-def __combine_phase_1(handcards: list) -> list:
+def __get_all_combi_1(handcards: list) -> list:
     """
     Return  [[StraightFlushes, Straights, Bombs, Trips, Pairs, Singles, rest_wildcard_cnt], ...]
     """
@@ -377,4 +521,9 @@ def __get_st_min_symbol(st: list) -> str:
     for i in range(5):
         if st[i] != wildcard:
             return AllSymbolsExcludingJokers[symbol2index[st[i][1]] - i]
+
+
+def __is_empty_combi(combi) -> bool:
+    straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = combi
+    return len(straight_flushes) == len(straights) == len(bombs) == len(trips) == len(pairs) == len(singles) == 0 and wildcard_cnt == 0
 

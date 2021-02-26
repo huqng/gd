@@ -1,5 +1,6 @@
 from algorithm0 import *
 from common import *
+from time import time
 
 
 class Player:
@@ -19,7 +20,6 @@ class Player:
         # [pos1, ...]
 
     def set_basic_info(self, handcards: list, pos: int, rank: str):
-
         self.handCards = sorted(handcards, key=lambda c: suit2index[c[0]] + symbol2index[c[1]] * 4)
         self.pos = pos
         set_wildcard('H' + rank)
@@ -62,3 +62,17 @@ class Player:
 
     def finished(self):
         return len(self.handCards) == 0
+
+
+if __name__ == "__main__":
+    cards = [
+        'DA', 'S2', 'H6', 'SJ', 'SA', 'DT', 'C8', 'S3', 'SQ',
+        'H7', 'C3', 'HJ', 'CQ', 'DT', 'H9', 'S4', 'H3', 'SJ',
+        'S4', 'H4', 'C4', 'D4', 'D4', 'DJ', 'HT', 'HQ', 'HK'
+        ]
+
+    p = Player()
+    p.set_basic_info(cards, 0, '2')
+    t_begin = time()
+    print(time() - t_begin, end="")
+    print("s")
