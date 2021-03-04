@@ -38,7 +38,7 @@ if __name__ == '__main__':
         while True:
             cur_action = players[i].get_action()
             cur_pos = i
-            print_action(cur_pos, cur_action)
+            print_action_info(cur_pos, cur_action, players[i].handCards)
             for j in range(4):
                 players[j].update_history(cur_pos, cur_action)
             if not players[i].finished():

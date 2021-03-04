@@ -78,9 +78,82 @@ def __rate_active(action: list, rest_combi: list, record: list) -> int:
     straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = rest_combi
     history, tribute, anti = record
     action_type, action_symbol, action_cards = action
+    is_pass = (action == pass_action)
 
+    rate = 0
 
-    return randint(0, 9999)
+    small = []
+    middle = []
+    large = []
+    bombs_ex = []
+
+    for s in singles:
+        value = symbol2value[s[0][1]]
+        if value <= 7:
+            small.append(s)
+        elif value <= 10:
+            middle.append(s)
+        else:
+            large.append(s)
+
+    for x in pairs + trips:
+        value = symbol2value[x[0][1]]
+        if value <= 5:
+            small.append(x)
+        elif value <= 9:
+            middle.append(x)
+        else:
+            large.append(x)
+
+    for st in straights:
+        index = symbol2index[__get_straight_min_symbol(st)]
+        if index <= 5:
+            small.append(st)
+        elif index <= 7:
+            middle.append(st)
+        elif index <= 9:
+            large.append(st)
+        else:
+            print(st)
+            exit("in rate active: wrong return value of __get_straight_min_symbol")
+
+    #for bomb in bombs + straight_flushes:
+    #    bombs_ex.append(bomb)
+
+    rate += -100 * len(small)
+
+    if len(middle) <= 2:
+        pass
+    else:
+        rate += (2 - len(middle)) * 100
+
+    if len(large) <= 2:
+        rate += 30 * len(large)
+    elif len(large) <= 3:
+        rate += 60
+    else:
+        rate += 150 - 30 * len(large)
+
+    for b in bombs:
+        rate += 100
+
+    for sf in straight_flushes:
+        rate += 120
+
+    for a in bombs + trips + pairs + singles:
+        rate += symbol2value[a[0][1]]
+
+    for s in straights + straight_flushes:
+        rate += symbol2index[__get_straight_min_symbol(s)]
+
+    if wildcard_cnt == 1:
+        rate += 30
+    elif wildcard_cnt == 2:
+        rate += 70
+
+    rate += len(action[2]) * 10
+
+    return rate
 
 
 def __rate_passive(action: list, rest_combi: list, record: list) -> int:
@@ -88,8 +161,7 @@ def __rate_passive(action: list, rest_combi: list, record: list) -> int:
     history, tribute, anti = record
     action_type, action_symbol, action_cards = action
 
-
-    return randint(0, 9999)
+    return __rate_active(action, rest_combi, record)
 
 
 def __get_all_actions_w0(combi: list) -> list:
@@ -306,8 +378,10 @@ def __get_all_actions_w2(combi: list) -> list:
 def __get_all_actions(combi: list, prev_action: list = pass_action) -> list:
     atype = prev_action[0]
     avalue = ""
+    aindex = -1
     if prev_action != pass_action:
         avalue = symbol2value[prev_action[1]]
+        aindex = symbol2index[prev_action[1]]
 
     wc_cnt = combi[-1]
     all_actions = []
@@ -336,7 +410,9 @@ def __get_all_actions(combi: list, prev_action: list = pass_action) -> list:
         elif (a[0] == "Bomb" or a[0] == "StraightFlush") and not (atype == "Bomb" or atype == "StraightFlush"):
             legal_actions.append(a)
         elif not (a[0] == "Bomb" or a[0] == "StraightFlush") and not (atype == "Bomb" or atype == "StraightFlush"):
-            if a[0] == atype and symbol2value[a[1]] > avalue:
+            if a[0] == atype and atype != "StraightFlush" and symbol2value[a[1]] > avalue:
+                legal_actions.append(a)
+            elif a[0] == atype == "StraightFlush" and symbol2index[a[1]] > aindex:
                 legal_actions.append(a)
         else:
             pass
@@ -517,7 +593,7 @@ def __find_sgc(cards_cnt: dict, wc_cnt: int, sg: list, sgc: list, min_symbol: st
 
 def __get_straight_min_symbol(st: list) -> str:
     """
-    There my be wildcard(s) in a straight or straight-flush like XX345 whose min-symbol is A.
+    There may be wildcard(s) in a straight or straight-flush like XX345 whose min-symbol is A.
     """
     wildcard = get_wildcard()
     for i in range(5):

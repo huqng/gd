@@ -78,8 +78,10 @@ def set_wildcard(v):
     global __wildcard
     __wildcard = v
 
+
 def get_rank_symbol():
     return __rankSymbol
+
 
 def set_rank_symbol(v):
     global __rankSymbol

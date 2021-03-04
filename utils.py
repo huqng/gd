@@ -77,7 +77,7 @@ def calc_bomb_value(action: list) -> float:
     type = action[0]
     if type == "StraightFlush":
         # 77 ~ 81
-        return 5.5 * 14 + symbol2value[action[1]] / 2
+        return 5.5 * 14 + symbol2index[action[1]] / 2
     elif action[2] == joker_bomb:
         # 151
         return 11 * 14
@@ -98,7 +98,7 @@ def cmp2bombs(action1: list, action2: list) -> bool:
     if action2 == joker_bomb:
         return True
     if action1[0] == action2[0] == "StraightFlush":
-        return symbol2value[action1[1]] < symbol2value[action2[1]]
+        return symbol2index[action1[1]] < symbol2index[action2[1]]
     if action1[0] == action2[0] == "Bomb":
         return len(action1[2]) < len(action2[2]) or \
                len(action1[2]) == len(action2[2]) and symbol2value[action1[1]] < symbol2value[action2[1]]
@@ -108,6 +108,30 @@ def cmp2bombs(action1: list, action2: list) -> bool:
         return len(action1[2]) <= 5
 
 
-def print_action(pos: int, action: list):
-    print(pos, action)
+def print_action_info(pos: int, action: list, handcards: list):
+    wildcard = get_wildcard()
+    print(pos, end=": ")
+    if action == pass_action:
+        print("PASS", end=" -- ")
+    else:
+        print("[", end=" ")
+        for c in action[2]:
+            if c == wildcard:
+                print("**", end=" ")
+            else:
+                suit = c[0]
+                symbol = c[1]
+                print(suit2graphic[suit] + symbol, end=" ")
+        print("]", end=" -- ")
+
+    print("[", end=" ")
+    for c in handcards:
+            if c == wildcard:
+                print("**", end=" ")
+            else:
+                suit = c[0]
+                symbol = c[1]
+                print(suit2graphic[suit] + symbol, end=" ")
+    print("]")
+
 
