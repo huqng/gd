@@ -49,9 +49,9 @@ class Player:
     def __is_active(self):
         if len(self.history) == 0:
             return True
-        for i in reversed(self.history):
-            pos = i[0]
-            action = i[1]
+        for i in range(-1, -len(self.history) - 1, -1):
+            pos = self.history[i][0]
+            action = self.history[i][1]
             if action == pass_action:
                 pass
             else:

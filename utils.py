@@ -76,8 +76,38 @@ def get_cards_cnt(handcards: list) -> dict:
 def calc_bomb_value(action: list) -> float:
     type = action[0]
     if type == "StraightFlush":
-        return 5.5 * 14 + symbol2value[action[1]]
+        # 77 ~ 81
+        return 5.5 * 14 + symbol2value[action[1]] / 2
     elif action[2] == joker_bomb:
+        # 151
         return 11 * 14
+
     else:
-        return len(action[2]) * 14 + symbol2value[action[1]]
+        # 5: <= 76.5 6: >= 84
+        return len(action[2]) * 14 + symbol2value[action[1]] / 2
+
+
+def cmp2bombs(action1: list, action2: list) -> bool:
+    """
+    :param action1: bomb or straightflush
+    :param action2: bomb or straightflush
+    :return: action1 < action2
+    """
+    if action1 == joker_bomb:
+        return False
+    if action2 == joker_bomb:
+        return True
+    if action1[0] == action2[0] == "StraightFlush":
+        return symbol2value[action1[1]] < symbol2value[action2[1]]
+    if action1[0] == action2[0] == "Bomb":
+        return len(action1[2]) < len(action2[2]) or \
+               len(action1[2]) == len(action2[2]) and symbol2value[action1[1]] < symbol2value[action2[1]]
+    if action1[0] == "StraightFlush" and action2[0] == "Bomb":
+        return len(action2[2]) > 5
+    if action1[0] == "Bomb" and action2[0] == "StraightFlush":
+        return len(action1[2]) <= 5
+
+
+def print_action(pos: int, action: list):
+    print(pos, action)
+

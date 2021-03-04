@@ -1,5 +1,6 @@
 __wildcard = str()
 __rankSymbol = str()
+max5BombValue = 76.5
 AllSymbols = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'B', 'R']
 AllSymbolsExcludingJokers = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K']
 AllJokers = ["SB", "HR"]

@@ -1,3 +1,4 @@
+from rate import *
 from common import *
 from utils import *
 from copy import deepcopy
@@ -7,12 +8,14 @@ from random import shuffle, randint
 def active(handcards: list, record) -> list:
     all_combi = __get_all_combi_1(handcards)
 
-    rated = []
+    rated_actions = []
+
     for combi in all_combi:
-        action, rate = __get_optimal_action_1(combi, record)
-        rated.append([action, rate])
-    rated.sort(key=lambda i: i[1])
-    action = rated[-1][0]
+        action, rate = __get_optimal_action_active(combi, record)
+        rated_actions.append([action, rate])
+
+    rated_actions.sort(key=lambda i: i[1])
+    action = rated_actions[-1][0]
     # update handcards:
     for card in action[2]:
         handcards.remove(card)
@@ -21,95 +24,71 @@ def active(handcards: list, record) -> list:
 
 def passive(handcards, record) -> list:
     history, tribute, anti = record
-    greater_action = None
-    for pos, action in history:
-        if action != pass_action:
-            greater_action = action
-            break
-    action_type = greater_action[0]
-    action_symbol = greater_action[1]
 
-    ret_action = None
+    all_combi = __get_all_combi_1(handcards)
 
-    if action_type == "Single":
-        ret_action = __passive_single(action_symbol, handcards, record)
-    elif action_type == "Pair":
-        ret_action = __passive_pair(action_symbol, handcards, record)
-    elif action_type == "Trips":
-        ret_action = __passive_trips(action_symbol, handcards, record)
-    elif action_type == "ThreePair":
-        ret_action = __passive_three_pair(action_symbol, handcards, record)
-    elif action_type == "ThreeWithTwo":
-        ret_action = __passive_three_with_two(action_symbol, handcards, record)
-    elif action_type == "TwoTrips":
-        ret_action = __passive_two_trips(action_symbol, handcards, record)
-    elif action_type == "Straight":
-        ret_action = __passive_straight(action_symbol, handcards, record)
-    elif action_type == "StraightFlush" or action_type == "Bomb":
-        bomb_value = calc_bomb_value(greater_action)
-        ret_action = __passive_bomb(bomb_value, handcards, record)
+    rated_actions = []
+    for combi in all_combi:
+        action, rate = __get_optimal_action_passive(combi, record)
+        rated_actions.append([action, rate])
 
-    if ret_action is None:
-        exit(-3)
-    else:
-        return ret_action
+    rated_actions.sort(key=lambda i: i[1])
+    action = rated_actions[-1][0]
+    # update handcards:
+    if action != pass_action:
+        for card in action[2]:
+            handcards.remove(card)
+    return action
 
 
-def __passive_single(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_pair(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_trips(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_three_pair(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_three_with_two(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_two_trips(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_straight(symbol: str, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __passive_bomb(bomb_value: int, handcards: list, record: list) -> list:
-    # TODO
-    return pass_action
-
-
-def __get_optimal_action_1(combi, record) -> list:
-    all_actions = __get_all_actions(combi)
+def __get_optimal_action_active(combi, record) -> list:
+    all_actions = __get_all_actions(combi, pass_action)
 
     rated = []
     for action in all_actions:
         rest_combi = exclude(combi, action)
-        rate = __do_rate(action, rest_combi, record)
+        rate = __rate_active(action, rest_combi, record)
         rated.append([action, rate])
     rated.sort(key=lambda t: t[1])
     return rated[-1]
 
 
-def __do_rate(action: list, rest_combi: list, record: list) -> int:
+def __get_optimal_action_passive(combi, record) -> list:
+    history, tribute, anti = record
+
+    greater_action = None
+    for pos, action in reversed(history):
+        if action != pass_action:
+            greater_action = action
+            break
+
+    all_actions = __get_all_actions(combi, greater_action)
+    rated = []
+    for action in all_actions:
+        rest_combi = exclude(combi, action)
+        rate = __rate_passive(action, rest_combi, record)
+        rated.append([action, rate])
+    rated.sort(key=lambda t: t[1])
+    if len(rated) == 0:
+        return [pass_action, __rate_passive(pass_action, combi, record)]
+    return rated[-1]
+
+
+def __rate_active(action: list, rest_combi: list, record: list) -> int:
     straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = rest_combi
     history, tribute, anti = record
+    action_type, action_symbol, action_cards = action
+
+
+    return randint(0, 9999)
+
+
+def __rate_passive(action: list, rest_combi: list, record: list) -> int:
+    straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = rest_combi
+    history, tribute, anti = record
+    action_type, action_symbol, action_cards = action
+
+
     return randint(0, 9999)
 
 
@@ -324,16 +303,21 @@ def __get_all_actions_w2(combi: list) -> list:
     return all_actions
 
 
-def __get_all_actions(combi: list) -> list:
+def __get_all_actions(combi: list, prev_action: list = pass_action) -> list:
+    atype = prev_action[0]
+    avalue = ""
+    if prev_action != pass_action:
+        avalue = symbol2value[prev_action[1]]
+
     wc_cnt = combi[-1]
     all_actions = []
     straight_flushes, straights, bombs, trips, pairs, singles, wildcard_cnt = deepcopy(combi)
 
     for st in straights:
-        min_symbol = __get_st_min_symbol(st)
+        min_symbol = __get_straight_min_symbol(st)
         all_actions.append(["Straight", min_symbol, st])
     for sf in straight_flushes:
-        min_symbol = __get_st_min_symbol(sf)
+        min_symbol = __get_straight_min_symbol(sf)
         all_actions.append(["StraightFlush", min_symbol, sf])
 
     all_actions += __get_all_actions_w0(combi)
@@ -341,7 +325,22 @@ def __get_all_actions(combi: list) -> list:
         all_actions += __get_all_actions_w1(combi)
         if wc_cnt == 2:
             all_actions += __get_all_actions_w2(combi)
-    return all_actions
+
+    if prev_action == pass_action:
+        return all_actions
+    legal_actions = []
+    for a in all_actions:
+        if (a[0] == "Bomb" or a[0] == "StraightFlush") and (atype == "Bomb" or atype == "StraightFlush"):
+            if cmp2bombs(prev_action, a):
+                legal_actions.append(a)
+        elif (a[0] == "Bomb" or a[0] == "StraightFlush") and not (atype == "Bomb" or atype == "StraightFlush"):
+            legal_actions.append(a)
+        elif not (a[0] == "Bomb" or a[0] == "StraightFlush") and not (atype == "Bomb" or atype == "StraightFlush"):
+            if a[0] == atype and symbol2value[a[1]] > avalue:
+                legal_actions.append(a)
+        else:
+            pass
+    return legal_actions
 
 
 def __get_all_combi_1(handcards: list) -> list:
@@ -516,7 +515,10 @@ def __find_sgc(cards_cnt: dict, wc_cnt: int, sg: list, sgc: list, min_symbol: st
         __find_sgc(cards_cnt_updated, wc_cnt - len(s[1]), new_sg, sgc, new_min_symbol)
 
 
-def __get_st_min_symbol(st: list) -> str:
+def __get_straight_min_symbol(st: list) -> str:
+    """
+    There my be wildcard(s) in a straight or straight-flush like XX345 whose min-symbol is A.
+    """
     wildcard = get_wildcard()
     for i in range(5):
         if st[i] != wildcard:

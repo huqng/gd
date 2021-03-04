@@ -1,6 +1,7 @@
 from random import shuffle, choice, randint
 from Player import *
 from common import *
+from utils import *
 
 
 def gen_cards():
@@ -37,7 +38,7 @@ if __name__ == '__main__':
         while True:
             cur_action = players[i].get_action()
             cur_pos = i
-            print(cur_pos, cur_action)
+            print_action(cur_pos, cur_action)
             for j in range(4):
                 players[j].update_history(cur_pos, cur_action)
             if not players[i].finished():
